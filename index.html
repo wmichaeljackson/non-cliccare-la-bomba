@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>💣 Non Cliccare la Bomba</title>
+  <style>
+    * { box-sizing: border-box; }
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family:'Comic Sans MS', cursive, sans-serif;
+      background: radial-gradient(circle at top, #2c3e50, #111827 72%);
+      color:#fff;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+    .app{
+      width:min(980px, calc(100vw - 24px));
+      background:rgba(15, 23, 42, 0.84);
+      border:2px solid rgba(255,255,255,.12);
+      border-radius:28px;
+      padding:24px;
+      box-shadow:0 18px 50px rgba(0,0,0,.35);
+      backdrop-filter: blur(10px);
+      position:relative;
+    }
+    h1{
+      margin:0 0 8px;
+      text-align:center;
+      font-size:clamp(2rem, 4vw, 3.2rem);
+      color:#f1c40f;
+      text-shadow:0 2px 0 rgba(0,0,0,.35);
+    }
+    .subtitle{
+      text-align:center;
+      margin:0 0 18px;
+      opacity:.9;
+      line-height:1.5;
+    }
+    .topbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:10px;
+      justify-content:center;
+      margin-bottom:16px;
+    }
+    .btn{
+      border:0;
+      border-radius:14px;
+      padding:12px 18px;
+      font:inherit;
+      font-weight:700;
+      cursor:pointer;
+      color:white;
+      background:#34495e;
+      transition:transform .15s ease, background .15s ease, box-shadow .15s ease;
+      box-shadow:0 8px 18px rgba(0,0,0,.18);
+    }
+    .btn:hover{ transform:translateY(-2px); background:#2ecc71; }
+    .btn:active{ transform:translateY(1px) scale(.98); }
+    .btn.secondary{ background:#8e44ad; }
+    .btn.secondary:hover{ background:#9b59b6; }
+
+    .scoreboard{
+      display:flex;
+      gap:12px;
+      justify-content:space-between;
+      flex-wrap:wrap;
+      margin-bottom:14px;
+      font-size:1rem;
+    }
+    .pill{
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:999px;
+      padding:10px 14px;
+      min-width:130px;
+      text-align:center;
+    }
+
+    .screen{ display:none; }
+    .screen.show{ display:block; }
+
+    .board{
+      display:grid;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap:12px;
+      margin-top:14px;
+    }
+    .choice{
+      border:none;
+      border-radius:16px;
+      padding:18px 10px;
+      min-height:72px;
+      font:inherit;
+      font-weight:700;
+      cursor:pointer;
+      color:#fff;
+      background:linear-gradient(180deg, #4f6d8a, #34495e);
+      box-shadow:0 10px 20px rgba(0,0,0,.22);
+      transition:transform .14s ease, background .14s ease, opacity .14s ease;
+      user-select:none;
+    }
+    .choice:hover{ transform:translateY(-2px); }
+    .choice.good{ background:linear-gradient(180deg, #27ae60, #1e8449); }
+    .choice.good:hover{ background:linear-gradient(180deg, #2ecc71, #27ae60); }
+    .choice.bomb{ background:linear-gradient(180deg, #ff7675, #d63031); }
+    .choice.bomb:hover{ background:linear-gradient(180deg, #ff9f43, #e17055); }
+    .choice.used{
+      opacity:.55;
+      pointer-events:none;
+      transform:none;
+    }
+
+    .message{
+      text-align:center;
+      margin-top:14px;
+      min-height:1.5em;
+      font-weight:700;
+      line-height:1.4;
+    }
+    .footer{
+      margin-top:14px;
+      text-align:center;
+      opacity:.85;
+      font-size:.95rem;
+    }
+
+    .game-end{
+      text-align:center;
+      padding:22px 10px 6px;
+    }
+    .result{
+      font-size:clamp(1.4rem, 3vw, 2.3rem);
+      margin:10px 0 6px;
+      color:#f1c40f;
+    }
+
+    @media (max-width:640px){
+      .app{ padding:16px; border-radius:20px; }
+      .pill{ min-width: calc(50% - 6px); }
+      .board{ grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
+      .choice{ min-height:64px; padding:14px 8px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section id="homeScreen" class="screen show">
+      <h1>💣 Non Cliccare la Bomba</h1>
+      <p class="subtitle">Clicca i pulsanti buoni, evita la bomba e resisti per 30 secondi.<br>Più vai avanti, più pulsanti appaiono.</p>
+
+      <div class="topbar">
+        <button class="btn" id="startBtn">Gioca</button>
+        <button class="btn secondary" id="resetBtn">Reset</button>
+        <button class="btn" id="commentsBtn">Commenti</button>
+        <button class="btn" id="funBtn">fun.games</button>
+      </div>
+
+      <div class="game-end">
+        <div class="result">Se clicchi la bomba, è finita.</div>
+        <p class="footer">Molto semplice. Molto rischioso. Molto divertente.</p>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="screen">
+      <h1>💣 Non Cliccare la Bomba</h1>
+      <div class="scoreboard">
+        <div class="pill">Punti: <span id="score">0</span></div>
+        <div class="pill">Tempo: <span id="time">30</span>s</div>
+        <div class="pill">Livello: <span id="level">1</span></div>
+      </div>
+
+      <div class="topbar">
+        <button class="btn secondary" id="backBtn">⬅ Torna alla home</button>
+      </div>
+
+      <div class="board" id="board" aria-label="Tavola dei pulsanti"></div>
+      <div class="message" id="message">Clicca i pulsanti verdi e stai lontano dalla bomba.</div>
+      <div class="footer">Suggerimento: la bomba non è mai una buona idea.</div>
+    </section>
+
+    <section id="endScreen" class="screen">
+      <h1>💣 Non Cliccare la Bomba</h1>
+      <div class="game-end">
+        <div class="result" id="finalScore">Hai totalizzato 0 punti!</div>
+        <p class="subtitle" id="finalMessage">La bomba ti ha battuto... questa volta.</p>
+        <div class="topbar">
+          <button class="btn" id="playAgainBtn">Gioca ancora</button>
+          <button class="btn secondary" id="backHomeBtn">Torna alla home</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  
+<script>
+    const homeScreen = document.getElementById('homeScreen');
+    const gameScreen = document.getElementById('gameScreen');
+    const endScreen = document.getElementById('endScreen');
+
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const commentsBtn = document.getElementById('commentsBtn');
+    const funBtn = document.getElementById('funBtn');
+    const backBtn = document.getElementById('backBtn');
+    const playAgainBtn = document.getElementById('playAgainBtn');
+    const backHomeBtn = document.getElementById('backHomeBtn');
+
+    const board = document.getElementById('board');
+    const scoreEl = document.getElementById('score');
+    const timeEl = document.getElementById('time');
+    const levelEl = document.getElementById('level');
+    const messageEl = document.getElementById('message');
+    const finalScore = document.getElementById('finalScore');
+    const finalMessage = document.getElementById('finalMessage');
+
+    let score = 0;
+    let timeLeft = 30;
+    let level = 1;
+    let running = false;
+    let timer = null;
+    let remainingSafeButtons = 0;
+    let clickedBomb = false;
+
+    function showScreen(screen) {
+      homeScreen.classList.remove('show');
+      gameScreen.classList.remove('show');
+      endScreen.classList.remove('show');
+      screen.classList.add('show');
+    }
+
+    function updateUI() {
+      scoreEl.textContent = score;
+      timeEl.textContent = timeLeft;
+      levelEl.textContent = level;
+    }
+
+    function buildRound() {
+      board.innerHTML = '';
+
+      const total = Math.min(4 + level * 2, 14);
+      const bombIndex = Math.floor(Math.random() * total);
+      remainingSafeButtons = total - 1;
+
+      for (let i = 0; i < total; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'choice';
+        btn.type = 'button';
+        btn.textContent = i === bombIndex ? '💣' : '⭐';
+        btn.dataset.type = i === bombIndex ? 'bomb' : 'good';
+        btn.setAttribute('aria-label', i === bombIndex ? 'Bottone bomba' : 'Bottone buono');
+
+        btn.addEventListener('click', () => {
+          if (!running || btn.classList.contains('used')) return;
+
+          if (btn.dataset.type === 'bomb') {
+            btn.classList.add('used');
+            clickedBomb = true;
+            endGame(true);
+            return;
+          }
+
+          score += 1;
+          btn.classList.add('used');
+          remainingSafeButtons -= 1;
+          messageEl.textContent = remainingSafeButtons === 0
+            ? 'Livello completato! Vai al prossimo.'
+            : (score % 5 === 0 ? 'Bravo! Hai evitato la bomba con stile.' : 'Ottimo! Continua così.');
+          updateUI();
+
+          if (remainingSafeButtons <= 0 && running) {
+            level += 1;
+            updateUI();
+            setTimeout(() => {
+              if (running) {
+                buildRound();
+                messageEl.textContent = 'Livello ' + level + ': attenzione alla bomba!';
+              }
+            }, 350);
+          }
+        });
+
+        board.appendChild(btn);
+      }
+    }
+
+    function startGame() {
+      score = 0;
+      timeLeft = 30;
+      level = 1;
+      running = true;
+      clickedBomb = false;
+      updateUI();
+      messageEl.textContent = 'Vai! Clicca solo i pulsanti buoni.';
+      showScreen(gameScreen);
+      buildRound();
+
+      clearInterval(timer);
+      timer = setInterval(() => {
+        timeLeft -= 1;
+        updateUI();
+        if (timeLeft <= 0) endGame(false);
+      }, 1000);
+    }
+
+    function resetGame() {
+      clearInterval(timer);
+      timer = null;
+      score = 0;
+      timeLeft = 30;
+      level = 1;
+      running = false;
+      remainingSafeButtons = 0;
+      clickedBomb = false;
+      board.innerHTML = '';
+      updateUI();
+      messageEl.textContent = 'Clicca i pulsanti verdi e stai lontano dalla bomba.';
+      showScreen(homeScreen);
+    }
+
+    function endGame(hitBomb) {
+      running = false;
+      clearInterval(timer);
+      timer = null;
+
+      if (hitBomb) {
+        finalScore.textContent = 'Hai cliccato la bomba! Punti: ' + score;
+        finalMessage.textContent = score === 0
+          ? 'Dovevi proprio evitare la bomba... ma era lì a guardarti.'
+          : 'Hai fatto bene, ma la bomba ha avuto l’ultima parola.';
+      } else {
+        finalScore.textContent = 'Tempo finito! Hai totalizzato ' + score + ' punti!';
+        if (score < 8) {
+          finalMessage.textContent = 'La bomba ha tremato appena. Puoi fare meglio.';
+        } else if (score < 18) {
+          finalMessage.textContent = 'Molto bene! Hai evitato parecchi guai.';
+        } else {
+          finalMessage.textContent = 'Fantastico! La bomba non sapeva più cosa fare.';
+        }
+      }
+      showScreen(endScreen);
+    }
+
+    startBtn.addEventListener('click', startGame);
+    playAgainBtn.addEventListener('click', startGame);
+    resetBtn.addEventListener('click', resetGame);
+    backBtn.addEventListener('click', resetGame);
+    backHomeBtn.addEventListener('click', resetGame);
+    commentsBtn.addEventListener('click', () => window.open('https://github.com/wmichaeljackson/non-cliccare-la-bomba/discussions/1', '_blank'));
+    funBtn.addEventListener('click', () => location.href = 'https://wmichaeljackson.github.io/fun.games/');
+
+    updateUI();
+    showScreen(homeScreen);
+  </script>
+
+</body>
+</html>
